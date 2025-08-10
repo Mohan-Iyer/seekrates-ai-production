@@ -1,0 +1,533 @@
+/*!
+=============================================================================
+SCRIPT DNA METADATA - GPS FOUNDATION COMPLIANT
+=============================================================================
+project_name: "decision_referee"
+module_name: "Socrates Expert Panel Hybrid Styles v4.0"
+script_id: "fr_05_uc_11_ec_06_tc_002"
+script_name: "static/css/decision_referee.css (Socrates section)"
+script_purpose: "Hybrid interface styling combining Socrates UI with Expert Panel v3.0"
+=============================================================================
+*/
+
+/* ===== SOCRATES EXPERT PANEL v4.0 STYLES ===== */
+
+/* Socrates Header Bar */
+.socrates-header-bar {
+    background: linear-gradient(135deg, var(--socratic-dark-blue), var(--socratic-medium-blue));
+    color: white;
+    padding: 15px 0;
+    box-shadow: 0 4px 12px rgba(5, 74, 147, 0.3);
+    margin-bottom: 0;
+}
+
+.socrates-branding {
+    display: flex;
+    align-items: center;
+}
+
+.socrates-header-logo {
+    width: 60px;
+    height: 60px;
+    margin-right: 20px;
+    border-radius: 50%;
+    border: 3px solid var(--socratic-gold);
+    background: white;
+    padding: 5px;
+}
+
+.socrates-title h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+}
+
+.socrates-subtitle {
+    margin: 0;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-style: italic;
+}
+
+.socrates-version-info {
+    text-align: right;
+}
+
+.version-badge, .gps-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    margin-left: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Expert Grid Container */
+.expert-grid-container {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 15px;
+    padding: 25px;
+    border: 2px solid var(--socratic-medium-blue);
+}
+
+.expert-grid-title {
+    text-align: center;
+    color: var(--socratic-dark-blue);
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.expert-grid-full {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.expert-row {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/* Expert Agent Cards */
+.expert-agent {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    border: 2px solid #dee2e6;
+    transition: all 0.3s ease;
+    min-width: 160px;
+    max-width: 200px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.expert-agent:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(49, 133, 197, 0.2);
+}
+
+.expert-agent.selected {
+    border-color: var(--socratic-teal);
+    background: linear-gradient(135deg, #f0f8ff, #e0f2fe);
+}
+
+.expert-agent.analyzing {
+    border-color: var(--socratic-gold);
+    background: linear-gradient(135deg, #fff9e6, #fef3c7);
+}
+
+.expert-agent.winner {
+    border-color: var(--socratic-gold);
+    background: linear-gradient(135deg, #fff9e6, #fef3c7);
+    border-width: 3px;
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+}
+
+.expert-agent.inactive {
+    opacity: 0.5;
+    filter: grayscale(70%);
+    border-color: #ccc;
+}
+
+.expert-agent.inactive:hover {
+    opacity: 0.7;
+    transform: none;
+}
+
+/* Expert Avatar */
+.expert-avatar {
+    text-align: center;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.expert-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid var(--socratic-medium-blue);
+}
+
+.expert-placeholder {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #ccc;
+    margin: 0 auto;
+}
+
+.expert-placeholder i {
+    color: #999;
+    font-size: 1.5rem;
+}
+
+.expert-status-indicator {
+    position: absolute;
+    bottom: -2px;
+    right: calc(50% - 30px);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #6c757d;
+    border: 2px solid white;
+    transition: all 0.3s ease;
+}
+
+.expert-agent.selected .expert-status-indicator {
+    background: var(--gps-success);
+}
+
+.expert-agent.analyzing .expert-status-indicator {
+    background: var(--socratic-gold);
+    animation: pulse 1.5s infinite;
+}
+
+.expert-agent.winner .expert-status-indicator {
+    background: var(--socratic-gold);
+    box-shadow: 0 0 8px var(--socratic-gold);
+}
+
+/* Expert Info */
+.expert-info {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.expert-name {
+    font-weight: bold;
+    color: var(--socratic-dark-blue);
+    font-size: 0.9rem;
+    margin-bottom: 2px;
+}
+
+.expert-provider {
+    font-size: 0.75rem;
+    color: var(--socratic-owl-teal);
+    margin-bottom: 5px;
+}
+
+.expert-metrics {
+    font-size: 0.7rem;
+    color: #6c757d;
+}
+
+.metric-tokens, .metric-time {
+    display: block;
+    margin: 1px 0;
+}
+
+/* Expert Selection */
+.expert-selection {
+    text-align: center;
+}
+
+.expert-checkbox {
+    transform: scale(1.2);
+    accent-color: var(--socratic-teal);
+}
+
+/* Form Enhancements */
+.socrates-question-label {
+    color: var(--socratic-dark-blue);
+    font-size: 1.1rem;
+}
+
+.socrates-question-input {
+    border: 2px solid var(--socratic-medium-blue);
+    border-radius: 10px;
+    font-size: 1rem;
+    min-height: 120px;
+}
+
+.socrates-question-input:focus {
+    border-color: var(--socratic-teal);
+    box-shadow: 0 0 0 0.2rem rgba(23, 153, 167, 0.25);
+}
+:root {
+    --socratic-dark-blue: #0F2E36;
+    --socratic-medium-blue: #1B4B57;
+    --socratic-light-blue: #3185C5;
+}
+.socrates-submit-btn {
+    background: linear-gradient(45deg, #1B4B57, #3185C5);
+    border: none;
+    border-radius: 25px;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(27, 75, 87, 0.3);
+    transition: all 0.3s ease;
+    color: white;
+}
+
+.socrates-submit-btn:hover {
+    background: linear-gradient(45deg, #0F2E36, #1B4B57);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(27, 75, 87, 0.5);
+    color: white;
+}
+
+.socrates-submit-btn:focus {
+    background: linear-gradient(45deg, #1B4B57, #3185C5);
+    box-shadow: 0 0 0 3px rgba(27, 75, 87, 0.25);
+    color: white;
+    outline: none;
+}
+
+.socrates-submit-btn:active {
+    transform: translateY(0px);
+    box-shadow: 0 2px 10px rgba(27, 75, 87, 0.4);
+}
+
+/* Loading Animation */
+.socrates-loading {
+    background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    border-radius: 15px;
+    padding: 30px;
+    border: 2px solid var(--socratic-gold);
+}
+
+.socrates-thinking-animation {
+    margin-bottom: 20px;
+}
+
+.socrates-thinking-gif {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid var(--socratic-gold);
+}
+
+/* Results Headers */
+.socrates-summary-header {
+    background: linear-gradient(45deg, var(--socratic-dark-blue), var(--socratic-medium-blue)) !important;
+    color: white !important;
+}
+
+.socrates-best-expert-header {
+    background: linear-gradient(45deg, var(--socratic-gold), #f39c12) !important;
+    color: white !important;
+}
+
+.socrates-disagreements-header {
+    background: linear-gradient(45deg, var(--socratic-teal), var(--socratic-owl-teal)) !important;
+    color: white !important;
+}
+
+.socrates-responses-header {
+    background: linear-gradient(45deg, #6c757d, #495057) !important;
+    color: white !important;
+}
+
+.socrates-wisdom-quote {
+    font-size: 0.8rem;
+    font-style: italic;
+    opacity: 0.9;
+    margin-left: 10px;
+}
+
+/* Summary Content */
+.socrates-summary-content {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: var(--socratic-dark-blue);
+}
+
+.socrates-summary-content strong {
+    color: var(--socratic-teal);
+}
+
+/* Sidebar Styles */
+.socrates-sidebar {
+    position: sticky;
+    top: 20px;
+}
+
+.socrates-sidebar-header {
+    background: var(--socratic-medium-blue) !important;
+    color: white !important;
+}
+
+.socrates-sample-questions {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+.question-category {
+    margin-bottom: 20px;
+}
+
+.category-header {
+    font-weight: bold;
+    color: var(--socratic-dark-blue);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--socratic-gold);
+    font-size: 0.9rem;
+}
+
+.sample-question {
+    cursor: pointer;
+    padding: 10px 12px;
+    margin: 6px 0;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    transition: all 0.3s ease;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.sample-question:hover {
+    background: rgba(49, 133, 197, 0.1);
+    border-color: var(--socratic-medium-blue);
+    transform: translateX(8px);
+}
+
+.sample-question:active {
+    background: var(--socratic-teal);
+    color: white;
+    transform: translateX(4px);
+}
+
+/* Wisdom Panel */
+.socrates-wisdom-header {
+    background: var(--socratic-gold) !important;
+    color: white !important;
+}
+
+.socrates-wisdom-panel {
+    padding: 10px;
+}
+
+.wisdom-quote {
+    text-align: center;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 10px;
+    border-left: 4px solid var(--socratic-gold);
+}
+
+.quote-icon {
+    color: var(--socratic-gold);
+    font-size: 1.2rem;
+}
+
+.quote-text {
+    font-style: italic;
+    color: var(--socratic-dark-blue);
+    margin: 10px 0;
+    font-size: 0.95rem;
+}
+
+.quote-attribution {
+    color: var(--socratic-owl-teal);
+    font-weight: bold;
+}
+
+.wisdom-principle {
+    background: rgba(23, 153, 167, 0.1);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    color: var(--socratic-dark-blue);
+}
+
+.expert-count-display, .gps-info {
+    background: white;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    color: var(--socratic-dark-blue);
+    border-left: 3px solid var(--socratic-teal);
+}
+
+/* Animations */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .socrates-header-bar {
+        padding: 10px 0;
+    }
+    
+    .socrates-branding {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .socrates-header-logo {
+        width: 50px;
+        height: 50px;
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    
+    .socrates-title h1 {
+        font-size: 1.5rem;
+    }
+    
+    .expert-row {
+        gap: 10px;
+    }
+    
+    .expert-agent {
+        min-width: 140px;
+        padding: 12px;
+    }
+    
+    .expert-icon {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .socrates-sidebar {
+        position: static;
+        margin-top: 20px;
+    }
+}
+
+/* Expert Winner Animation */
+.expert-agent.winner {
+    animation: winnerGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes winnerGlow {
+    0% { box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4); }
+    100% { box-shadow: 0 8px 35px rgba(212, 175, 55, 0.6); }
+}
+
+/* Tier-based Expert Styling */
+.expert-agent[data-tier="primary"] {
+    border-width: 2px;
+}
+
+.expert-agent[data-tier="secondary"] {
+    border-width: 2px;
+    border-style: dashed;
+}
+
+.expert-agent[data-tier="specialized"] {
+    border-width: 1px;
+    border-style: dotted;
+}
+
+.expert-agent[data-tier="specialized"] .expert-name {
+    font-style: italic;
+}

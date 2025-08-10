@@ -1,0 +1,64 @@
+include:
+  # Root
+  - app.py
+  - requirements.txt
+  - Procfile
+  - runtime.txt
+  - README.md
+  - deploy_to_railway.sh
+  
+  # Config (runtime-only)
+  - config/gps_runtime_config.yaml
+  - config/migrate_deploy.json
+  
+  # Deployment metadata
+  - deployment/version_manifest.yaml
+  
+  # Core runtime packages
+  - src/__init__.py
+  - src/core/__init__.py
+  - src/core/system_config.py
+  - src/core/confidence_scorer.py
+  - src/utils/__init__.py
+  - src/utils/secrets_manager.py
+  - src/utils/llm_credentials_manager.py
+  - src/secrets/__init__.py
+  - src/secrets/inject_llm_keys_from_aws.py
+  - src/secrets/secure_runtime_guard.py
+  
+  # Agents: watchdog-allowed set ONLY
+  - src/agents/__init__.py
+  - src/agents/base_agent.py
+  - src/agents/consensus_engine.py
+  - src/agents/dispatch_orchestrator.py
+  - src/agents/hlr_evaluator.py
+  - src/agents/llm_dispatcher.py
+  - src/agents/multi_llm_referee.py
+  - src/agents/route_prompt.py
+  - src/agents/run_validated_agent.py
+  
+  # Static (only what's referenced)
+  - static/index.html
+  - static/css/decision_referee.css
+  - static/js/socrates-expert-panel.js
+
+overlay:
+  # Extra items copied after include (good for local tools)
+  # - tools/setup_clean_deployment.sh
+
+protect:
+  # Target paths to leave untouched across runs
+  - notes/
+  - deployment/docs_local/**
+  - deployment_hash_manifest.json
+
+options:
+  default_mode: overwrite
+  scan_scope: included_only
+  prune_extraneous: false
+
+forbid_patterns:
+  # Extra forbidden patterns on top of built-ins
+  - '\.DS_Store$'
+  - 'test_*.py'
+  - '*_backup.*'

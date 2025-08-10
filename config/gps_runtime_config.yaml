@@ -1,0 +1,10 @@
+gps_metadata:
+  config_version: 1.0.0
+  coordinate: fr_05_uc_11_ec_05_tc_011
+runtime:
+  api_timeout: 30
+  max_agents: 9
+  mock_mode: false
+validation:
+  preflight_checks: true
+  require_api_keys: true

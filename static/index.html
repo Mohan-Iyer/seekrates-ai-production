@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socratic AI Expert Panel v4.2 - Digital Lyceum</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --socratic-primary: #2c5282;
+            --socratic-secondary: #4a5568;
+            --socratic-accent: #805ad5;
+            --socratic-gold: #d69e2e;
+            --socratic-light: #f7fafc;
+            --socratic-dark: #1a202c;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--socratic-light) 0%, #e6fffa 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .header-banner {
+            background: linear-gradient(135deg, var(--socratic-primary) 0%, var(--socratic-accent) 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .logo-section img {
+            max-height: 60px;
+            width: auto;
+        }
+
+        .agent-logo.bg-purple {
+            background: #6f42c1 !important;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* PANTHEON SECTION - 80% WIDTH */
+        .pantheon-section {
+            flex: 0 0 80%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .agent-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 140px;
+        }
+
+        .agent-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .agent-card.active {
+            border-color: var(--socratic-primary);
+            background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+        }
+
+        .agent-card.inactive {
+            opacity: 0.5;
+            background: #f8f9fa;
+            border-color: #dee2e6;
+        }
+
+        .agent-card.champion {
+            border-color: var(--socratic-gold);
+            background: linear-gradient(135deg, #fff8dc 0%, #ffeaa7 100%);
+        }
+
+        .agent-card .crown {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            color: var(--socratic-gold);
+            font-size: 1.5rem;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .agent-logo {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 0.5rem;
+            background: var(--socratic-secondary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            color: var(--socratic-dark);
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .agent-status {
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-top: 0.5rem;
+        }
+
+        .status-active { background: #d4edda; color: #155724; }
+        .status-processing { background: #fff3cd; color: #856404; }
+        .status-inactive { background: #f8d7da; color: #721c24; }
+        .status-coming-soon { background: #e2e3e5; color: #495057; }
+
+        /* PROMOTIONAL BANNER STYLING */
+        .seekrates-banner {
+            margin: 2rem 0;
+            border: 3px solid #7c3aed;
+            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(124, 58, 237, 0.4);
+        }
+
+        .banner-header {
+            text-align: center;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+        }
+
+        .banner-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .banner-subtitle {
+            font-size: 18px;
+            margin: 8px 0 0 0;
+        }
+
+        .banner-benefits {
+            margin: 16px 0;
+        }
+
+        .banner-benefit {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .banner-footer {
+            text-align: center;
+            border-top: 2px solid rgba(255,255,255,0.3);
+            padding-top: 16px;
+            margin-top: 16px;
+        }
+
+        .banner-cta {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 8px 0;
+        }
+
+        .banner-tagline {
+            font-size: 16px;
+            font-style: italic;
+            margin: 4px 0 0 0;
+        }
+
+        /* SYNTHESIS SECTION - 20% WIDTH */
+        .synthesis-section {
+            flex: 0 0 20%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .synthesis-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .enquiries-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .enquiries-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            max-height: 300px;
+        }
+
+        .topics-list {
+            overflow-y: auto;
+            border-right: 1px solid #e2e8f0;
+            padding-right: 1rem;
+        }
+
+        .topic-item {
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .topic-item:hover {
+            background: var(--socratic-light);
+            border-color: var(--socratic-primary);
+        }
+
+        .topic-item.selected {
+            background: linear-gradient(135deg, var(--socratic-primary) 0%, var(--socratic-accent) 100%);
+            color: white;
+        }
+
+        .query-display {
+            padding-left: 1rem;
+            overflow-y: auto;
+        }
+
+        .query-text {
+            font-style: italic;
+            color: var(--socratic-secondary);
+            line-height: 1.6;
+            font-size: 0.9rem;
+        }
+
+        /* QUERY SECTION - 80% WIDTH WRAPPER */
+        .query-wrapper {
+            width: 80%;
+            margin: 0 auto;
+        }
+
+        .query-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .query-input {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .query-input:focus {
+            border-color: var(--socratic-primary);
+            box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1);
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, var(--socratic-primary) 0%, var(--socratic-accent) 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* ENHANCED SCROLLABLE EXPERT RESPONSE PANEL */
+        #expert-response-panel {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            padding: 10px;
+            margin-top: 10px;
+            background: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* EXPERT RESPONSE CARDS */
+        .expert-response {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .expert-response:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .expert-response.champion {
+            border-color: var(--socratic-gold);
+            background: linear-gradient(135deg, #fff8dc 0%, #ffeaa7 100%);
+        }
+
+        .expert-header {
+            background: linear-gradient(135deg, var(--socratic-primary) 0%, var(--socratic-accent) 100%);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .expert-content {
+            padding: 1.5rem;
+            line-height: 1.6;
+            color: var(--socratic-dark);
+        }
+
+        .champion-badge {
+            background: var(--socratic-gold);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .loading-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: var(--socratic-primary);
+        }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 1200px) {
+            .agent-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .main-layout {
+                flex-direction: column;
+            }
+            
+            .pantheon-section, .synthesis-section {
+                flex: 1 1 auto;
+            }
+
+            .query-wrapper {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .agent-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .enquiries-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            #expert-response-panel {
+                max-height: 250px;
+            }
+        }
+
+        /* PHILOSOPHICAL QUOTES */
+        .socratic-quote {
+            font-style: italic;
+            color: var(--socratic-accent);
+            text-align: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            border-left: 4px solid var(--socratic-gold);
+            background: rgba(128, 90, 213, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER BANNER -->
+    <div class="header-banner">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-2 logo-section">
+                    <img src="Seekrates.png" alt="Socratic AI" class="img-fluid">
+                </div>
+                <div class="col-md-8 text-center">
+                    <h1 class="mb-2">🏛️ Socratic AI Expert Panel</h1>
+                    <h3 class="mb-0">From Socratic Inquiry to AI-Driven Wealth</h3>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="main-layout">
+            <!-- PANTHEON SECTION (80% WIDTH) -->
+            <div class="pantheon-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="text-primary mb-0">🏛️ AI Expert Pantheon</h3>
+                    <div class="badge bg-info">12 Agents Available</div>
+                </div>
+
+                <!-- 🎯 12 AGENTS IN 2 ROWS OF 6 -->
+                <div class="agent-grid">
+                    <!-- ROW 1: PRIMARY AGENTS -->
+                    <div class="agent-card active" id="claude-card">
+                        <div class="agent-logo bg-primary">🧠</div>
+                        <div class="agent-name">Claude</div>
+                        <div class="agent-status status-active">Ready</div>
+                    </div>
+
+                    <div class="agent-card active" id="openai-card">
+                        <div class="agent-logo bg-success">🤖</div>
+                        <div class="agent-name">OpenAI</div>
+                        <div class="agent-status status-active">Ready</div>
+                    </div>
+
+                    <div class="agent-card active" id="mistral-card">
+                        <div class="agent-logo bg-warning">⚡</div>
+                        <div class="agent-name">Mistral</div>
+                        <div class="agent-status status-active">Ready</div>
+                    </div>
+
+                    <div class="agent-card active" id="together-card">
+                        <div class="agent-logo bg-info">🤝</div>
+                        <div class="agent-name">Together AI</div>
+                        <div class="agent-status status-active">Ready</div>
+                    </div>
+
+                    <div class="agent-card active" id="gemini-card">
+                        <div class="agent-logo bg-danger">💎</div>
+                        <div class="agent-name">Gemini Pro</div>
+                        <div class="agent-status status-active">Ready</div>
+                    </div>
+
+                    <div class="agent-card active" id="cohere-card">
+                        <div class="agent-logo bg-purple">🤖</div>
+                        <div class="agent-name">Cohere</div>
+                        <div class="agent-status status-active">Ready</div>
+                    </div>
+
+                    <!-- ROW 2: SPECIALIZED AGENTS -->
+                    <div class="agent-card inactive" id="anthropic-card">
+                        <div class="agent-logo bg-secondary">🔬</div>
+                        <div class="agent-name">Anthropic</div>
+                        <div class="agent-status status-coming-soon">Coming Soon</div>
+                    </div>
+
+                    <div class="agent-card inactive" id="qwen-card">
+                        <div class="agent-logo bg-secondary">🎯</div>
+                        <div class="agent-name">Qwen</div>
+                        <div class="agent-status status-coming-soon">Coming Soon</div>
+                    </div>
+
+                    <div class="agent-card inactive" id="deepseek-card">
+                        <div class="agent-logo bg-secondary">🔬</div>
+                        <div class="agent-name">DeepSeek</div>
+                        <div class="agent-status status-coming-soon">Coming Soon</div>
+                    </div>
+
+                    <div class="agent-card inactive" id="grok-card">
+                        <div class="agent-logo bg-secondary">🚀</div>
+                        <div class="agent-name">Grok</div>
+                        <div class="agent-status status-coming-soon">Coming Soon</div>
+                    </div>
+
+                    <div class="agent-card inactive" id="sarvam-card">
+                        <div class="agent-logo bg-secondary">🇮🇳</div>
+                        <div class="agent-name">Sarvam AI</div>
+                        <div class="agent-status status-coming-soon">Coming Soon</div>
+                    </div>
+
+                    <div class="agent-card active" id="hrm-card">
+                        <div class="agent-logo bg-info">🇸🇬</div>
+                        <div class="agent-name">HRM (Singapore)</div>
+                        <div class="agent-status status-active">Standby</div>
+                    </div>
+                </div>
+
+                <!-- 🎯 PROMINENT MARKETING BANNER -->
+                <div class="seekrates-banner">
+                    <div class="banner-header">
+                        <h2 class="banner-title">🔓 Unlock Your AI-Powered Future with Seekrates.ai</h2>
+                        <p class="banner-subtitle">Sign up for 3 months – and receive the ultimate AI business launch kit.</p>
+                    </div>
+                    
+                    <div class="banner-benefits">
+                        <div class="banner-benefit">🎁 <strong>Bonus:</strong> Complete business plan + marketing strategy + social media campaign – tailored to your persona</div>
+                        <div class="banner-benefit">📈 <strong>AI Opportunity Engine:</strong> Ask: "What's the best way for me to make money with AI?"</div>
+                        <div class="banner-benefit">🧠 <strong>Smart Queries:</strong> Based on your persona, you get 3 one-line suggestions to launch with Seekrates.ai</div>
+                    </div>
+                    
+                    <div class="banner-footer">
+                        <p class="banner-cta">All this – for a special 3-month starter plan. Watch this space.</p>
+                        <p class="banner-tagline">Why Wait? Your AI-powered revenue stream is just one question away.</p>
+                    </div>
+                </div>
+
+                <!-- SYNTHESIS PANEL -->
+                <div class="synthesis-panel">
+                    <h4 class="text-primary mb-3">⚖️ Synthesis</h4>
+                    
+                    <div class="socratic-quote">
+                        "The only true wisdom is in knowing you know nothing." - Socrates
+                    </div>
+
+                    <div id="synthesis-content">
+                        <p class="text-muted">Expert panel synthesis will appear here after analysis...</p>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6 class="text-secondary">📊 Session Metrics</h6>
+                        <div class="small text-muted" id="session-metrics">
+                            <div>Agents Active: <span id="active-count">12</span></div>
+                            <div>Total Responses: <span id="response-count">0</span></div>
+                            <div>Champion Score: <span id="champion-score">0</span></div>
+                            <div>Processing Time: <span id="process-time">0s</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SOCRATIC ENQUIRIES PANEL -->
+                <div class="enquiries-panel">
+                    <h4 class="text-primary mb-3">📚 Socratic Enquiries</h4>
+                    <div class="enquiries-layout">
+                        <div class="topics-list">
+                            <div class="topic-item" data-query="What is the nature of wisdom in the age of artificial intelligence?">
+                                The Nature of AI Wisdom
+                            </div>
+                            <div class="topic-item" data-query="How do we distinguish between knowledge and mere information in our digital age?">
+                                Knowledge vs Information
+                            </div>
+                            <div class="topic-item" data-query="What ethical frameworks should guide artificial intelligence development?">
+                                AI Ethics Framework
+                            </div>
+                            <div class="topic-item" data-query="How can machines and humans collaborate to achieve greater understanding?">
+                                Human-AI Collaboration
+                            </div>
+                            <div class="topic-item" data-query="What are the fundamental questions we should ask about consciousness and AI?">
+                                Consciousness & AI
+                            </div>
+                            <div class="topic-item" data-query="How do we ensure AI systems remain aligned with human values?">
+                                AI Alignment Challenge
+                            </div>
+                        </div>
+
+                        <div class="query-display">
+                            <h6 class="text-secondary mb-2">Selected Enquiry:</h6>
+                            <div class="query-text" id="selected-query">
+                                Click a topic to view the philosophical question...
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary mt-3" id="use-query-btn" disabled>
+                                Use This Query
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SYNTHESIS SECTION (20% WIDTH) - RIGHT SIDEBAR -->
+            <div class="synthesis-section">
+                <h4 class="text-primary mb-3">🔬 Agent Analysis</h4>
+                
+                <div class="small text-muted">
+                    <div class="mb-2"><strong>Response Status:</strong></div>
+                    <div id="agent-status-list">
+                        <div>🧠 Claude: <span class="text-success">Ready</span></div>
+                        <div>🤖 OpenAI: <span class="text-success">Ready</span></div>
+                        <div>⚡ Mistral: <span class="text-success">Ready</span></div>
+                        <div>🤝 Together AI: <span class="text-success">Ready</span></div>
+                        <div>💎 Gemini Pro: <span class="text-success">Ready</span></div>
+                        <div>🤖 Cohere: <span class="text-success">Ready</span></div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mt-3">
+                    <h6 class="text-secondary">🎯 Quick Actions</h6>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="window.debugSocrates()">
+                            Debug Panel
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+                            Reset Session
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUERY SECTION WITH 80% WIDTH WRAPPER -->
+        <div class="query-wrapper">
+            <div class="query-section">
+                <div class="row align-items-end">
+                    <div class="col-md-9">
+                        <label for="query-input" class="form-label fw-bold">🤔 Pose Your Question to the Digital Lyceum</label>
+                        <textarea class="form-control query-input" id="query-input" rows="3" 
+                                  placeholder="Enter your philosophical or analytical query for the expert panel to deliberate..."></textarea>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn submit-btn w-100" id="submit-query">
+                            <i class="fas fa-paper-plane me-2"></i>Submit to Panel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- EXPERT RESPONSES WITH ENHANCED SCROLLING -->
+                <div id="expert-response-panel">
+                    <div id="expert-responses-container">
+                        <div id="no-responses-message" class="text-center text-muted py-4">
+                            <i class="fas fa-brain fa-3x mb-3" style="color: var(--socratic-primary);"></i>
+                            <h5>Expert Panel Ready</h5>
+                            <p>Submit a query above to see expert analysis and philosophical insights.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/socrates-expert-panel.js?v=20250808"></script>
+</body>
+</html>
