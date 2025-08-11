@@ -180,44 +180,43 @@ class LLMDispatcher:
         Get API key with fallback to multiple sources and proper logging.
         Uses global os import - no local imports to avoid scope conflicts.
         """
-        
-        # Map service names to environment variable names
+        # Map service names to *one or more* environment variable names (with aliases)
         service_mapping = {
-            "anthropic": "ANTHROPIC_API_KEY",
-            "openai": "OPENAI_API_KEY", 
-            "mistral": "MISTRAL_API_KEY",
-            "gemini": "GEMINI_API_KEY",
-            "ai21": "AI21_API_KEY",
-            "cohere": "COHERE_API_KEY"
+            "anthropic": ("ANTHROPIC_API_KEY", "CLAUDE_API_KEY"),
+            "openai":    ("OPENAI_API_KEY",),
+            "mistral":   ("MISTRAL_API_KEY",),
+            "gemini":    ("GEMINI_API_KEY", "GOOGLE_API_KEY"),
+            "ai21":      ("AI21_API_KEY",),
+            "cohere":    ("COHERE_API_KEY",),
         }
-        
-        env_var_name = service_mapping.get(service.lower())
-        if not env_var_name:
+
+        names = service_mapping.get(service.lower())
+        if not names:
             logger.warning(f"⚠️  Unknown service '{service}' - no API key mapping")
             return None
-        
-        # Try SecretsManager first (if available)
+
+        # Try SecretsManager first (supports *_ENC variants for any candidate name)
         if self.secrets_manager:
             try:
-                # Try encrypted environment variable
-                encrypted_env_var = f"{service.upper()}_API_KEY_ENC"
-                encrypted_key = os.getenv(encrypted_env_var)  # ← Uses global os
-                if encrypted_key:
-                    decrypted = self.secrets_manager.decrypt(encrypted_key)
-                    if decrypted:
-                        logger.info(f"✅ {env_var_name} loaded from encrypted source")
-                        return decrypted
+                for name in names:
+                    enc_name = f"{name}_ENC"
+                    encrypted_key = os.getenv(enc_name)
+                    if encrypted_key:
+                        decrypted = self.secrets_manager.decrypt(encrypted_key)
+                        if decrypted:
+                            logger.info(f"✅ {name} (encrypted) loaded via SecretsManager")
+                            return decrypted
             except Exception as e:
                 logger.warning(f"SecretsManager decryption failed: {e}")
-        
-        # CRITICAL FALLBACK: Direct environment variable access
-        plain_key = os.getenv(env_var_name)  # ← Uses global os, no scope conflict
-        if plain_key and plain_key.strip():
-            logger.info(f"✅ {env_var_name} loaded from .env")
-            return plain_key.strip()
-        
-        # Key not found - log warning
-        logger.warning(f"⚠️  {env_var_name} is missing or empty")
+
+        # Plain env vars (first one found wins)
+        for name in names:
+            plain_key = os.getenv(name)
+            if plain_key and plain_key.strip():
+                logger.info(f"✅ {name} loaded from environment")
+                return plain_key.strip()
+
+        logger.warning(f"⚠️  No API key found for {service} (tried: {', '.join(names)})")
         return None
 
     def dispatch(self, agent: str, prompt: str, **kwargs) -> Dict[str, Any]:
@@ -339,8 +338,10 @@ class LLMDispatcher:
                 
             # Environment Variable Analysis  
             env_key = os.getenv("ANTHROPIC_API_KEY")
+            claude_key = os.getenv("CLAUDE_API_KEY")
             enc_key = os.getenv("ANTHROPIC_API_KEY_ENC")
             print(f"🌍 ANTHROPIC_API_KEY env: {bool(env_key)} ({len(env_key) if env_key else 0} chars)")
+            print(f"🌍 CLAUDE_API_KEY env: {bool(claude_key)} ({len(claude_key) if claude_key else 0} chars)")
             print(f"🌍 ANTHROPIC_API_KEY_ENC env: {bool(enc_key)} ({len(enc_key) if enc_key else 0} chars)")
             
             # Prompt Analysis

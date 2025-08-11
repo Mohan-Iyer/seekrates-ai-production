@@ -15,7 +15,7 @@
     "src/agents/consensus_engine.py": "121bc61f7ebd5d7c7cc672efbfee1827b2eff754787266adfce14a7421f6efe0",
     "src/agents/dispatch_orchestrator.py": "57a0d613354d012c4405cb37fe34def7718c4cd96d5018f9df88f6916f71f7e6",
     "src/agents/hlr_evaluator.py": "8ceda03059a0cda2df7fddbd534b64a524fa005d121a9e0f369309817fc27903",
-    "src/agents/llm_dispatcher.py": "3ef6924cc4fea90b920118e4749cd6cb5f978e5f15ba188826fcc25819735636",
+    "src/agents/llm_dispatcher.py": "544bdf95148cba02e91b9606ec5a336efa04e9f8ce683e72acd04d8153790255",
     "src/agents/multi_llm_referee.py": "5a7db536a810ba5aa53126453d3c9b50f7f44ceb73c9388914fc3dd7d2aee8a4",
     "src/agents/route_prompt.py": "e50e9efa70b232a1f4df17b10f6050188c0c5f2187b84e6eaf12da0c12fdbd8c",
     "src/agents/run_validated_agent.py": "58df23c9c7105de9add7431f8971a1060867e57dc1fd6c7442ab31e9be2045f5",
