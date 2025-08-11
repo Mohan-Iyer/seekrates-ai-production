@@ -17,14 +17,19 @@
 
 import os
 
-# Toggleable bootstrap: default ON
-if os.getenv("BOOTSTRAP_ENABLED", "true").lower() == "true":
-    try:
-        from src.secrets.inject_llm_keys_from_aws import load_secrets
-        load_secrets()
-    except Exception as e:
-        # Fail fast with a clear message (no secrets in logs)
-        raise SystemExit(f"Bootstrap failed: {e}")
+def run_bootstrap():
+    """Run AWS secrets bootstrap if enabled."""
+    if os.getenv("BOOTSTRAP_ENABLED", "true").lower() == "true":
+        try:
+            from src.secrets.inject_llm_keys_from_aws import load_secrets
+            load_secrets()
+            print("✅ AWS secrets bootstrap completed")
+        except Exception as e:
+            # Fail fast with a clear message (no secrets in logs)
+            raise SystemExit(f"Bootstrap failed: {e}")
+    else:
+        print("ℹ️  Bootstrap disabled via BOOTSTRAP_ENABLED=false")
+
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import sys
 import yaml
@@ -41,15 +46,21 @@ app = Flask(__name__, static_folder='static', template_folder='static')
 # =============================================================================
 # GPS FOUNDATION RUNTIME CONFIG LOADER
 # =============================================================================
+RUNTIME_CONFIG = None
+
 def load_runtime_config():
-    """Load GPS Foundation runtime configuration"""
+    """Load GPS Foundation runtime configuration (lazy loaded)"""
+    global RUNTIME_CONFIG
+    if RUNTIME_CONFIG is not None:
+        return RUNTIME_CONFIG
+        
     config_path = Path("config/gps_runtime_config.yaml")
     if not config_path.exists():
         # Create default config if missing
         config_path.parent.mkdir(exist_ok=True)
         default_config = {
             'runtime': {
-                'mock_mode': False,  # ← CRITICAL: False for production
+                'mock_mode': False,
                 'api_timeout': 30,
                 'max_agents': 9
             },
@@ -64,10 +75,10 @@ def load_runtime_config():
         }
         with open(config_path, 'w') as f:
             yaml.dump(default_config, f, default_flow_style=False)
-        print(f"✅ Created default runtime config: {config_path}")
     
     with open(config_path) as f:
-        return yaml.safe_load(f)
+        RUNTIME_CONFIG = yaml.safe_load(f)
+        return RUNTIME_CONFIG
 
 # =============================================================================
 # API KEY VALIDATION SYSTEM
@@ -171,28 +182,47 @@ def create_mock_response(question, selected_agents):
 # =============================================================================
 # STARTUP INITIALIZATION
 # =============================================================================
-print("🏛️ Initializing Socrates Expert Panel v4.0...")
+api_validator = None
 
-# Load runtime configuration
-try:
-    RUNTIME_CONFIG = load_runtime_config()
-    print(f"✅ Runtime config loaded - Mock mode: {RUNTIME_CONFIG['runtime']['mock_mode']}")
-except Exception as e:
-    print(f"❌ Failed to load runtime config: {e}")
-    exit(1)
-
-# Initialize API key validator
-try:
-    api_validator = APIKeyValidator()
-    available_agents = api_validator.get_available_agents()
-    print(f"✅ API Key validation complete - Available agents: {available_agents}")
+def initialize_runtime():
+    """Initialize runtime components (called only when running as main)"""
+    global api_validator
     
-    if not available_agents and not RUNTIME_CONFIG['runtime']['mock_mode']:
-        print("⚠️ WARNING: No API keys available and mock_mode is False")
-        print("   Either set API keys or enable mock_mode for testing")
-except Exception as e:
-    print(f"❌ API key validation failed: {e}")
-    api_validator = None
+    print("🏛️ Initializing Socrates Expert Panel v4.0...")
+    
+    # Run bootstrap
+    run_bootstrap()
+
+    # Load runtime configuration
+    try:
+        runtime_config = load_runtime_config()
+        print(f"✅ Runtime config loaded - Mock mode: {runtime_config['runtime']['mock_mode']}")
+    except Exception as e:
+        print(f"❌ Failed to load runtime config: {e}")
+        exit(1)
+
+    # Initialize API key validator
+    try:
+        api_validator = APIKeyValidator()
+        available_agents = api_validator.get_available_agents()
+        print(f"✅ API Key validation complete - Available agents: {available_agents}")
+        
+        if not available_agents and not runtime_config['runtime']['mock_mode']:
+            print("⚠️ WARNING: No API keys available and mock_mode is False")
+            print("   Either set API keys or enable mock_mode for testing")
+    except Exception as e:
+        print(f"❌ API key validation failed: {e}")
+        api_validator = None
+
+def get_api_validator():
+    """Get API validator instance, initializing if needed"""
+    global api_validator
+    if api_validator is None:
+        try:
+            api_validator = APIKeyValidator()
+        except Exception as e:
+            print(f"⚠️ Failed to initialize API validator: {e}")
+    return api_validator
 
 # =============================================================================
 # FLASK ROUTES
@@ -212,7 +242,8 @@ def expert_panel_analysis():
         print(f"🤖 Selected agents: {selected_agents}")
         
         # ✅ STRICT MOCK MODE CHECK
-        if RUNTIME_CONFIG["runtime"]["mock_mode"]:
+        runtime_config = load_runtime_config()
+        if runtime_config["runtime"]["mock_mode"]:
             print("⚠️ MOCK MODE ACTIVE - Returning simulated responses")
             return jsonify(create_mock_response(question, selected_agents))
         
@@ -220,8 +251,9 @@ def expert_panel_analysis():
         print("🔥 REAL MODE - Calling actual LLM dispatcher")
         
         # Validate agents have API keys
-        if api_validator:
-            available_agents = api_validator.get_available_agents()
+        validator = get_api_validator()
+        if validator:
+            available_agents = validator.get_available_agents()
             # Filter selected agents to only include those with API keys
             valid_selected_agents = [agent for agent in selected_agents if agent in available_agents]
             
@@ -255,18 +287,20 @@ def expert_panel_analysis():
 @app.route('/status/keys')
 def api_key_status():
     """Status endpoint for API key validation"""
-    if api_validator:
-        return jsonify(api_validator.get_status_summary())
+    validator = get_api_validator()
+    if validator:
+        return jsonify(validator.get_status_summary())
     else:
         return jsonify({"error": "API validator not initialized"})
 
 @app.route('/status/config')
 def runtime_config_status():
     """Status endpoint for runtime configuration"""
+    runtime_config = load_runtime_config()
     return jsonify({
-        "runtime_config": RUNTIME_CONFIG,
-        "mock_mode": RUNTIME_CONFIG["runtime"]["mock_mode"],
-        "gps_coordinate": RUNTIME_CONFIG.get("gps_metadata", {}).get("coordinate", "unknown")
+        "runtime_config": runtime_config,
+        "mock_mode": runtime_config["runtime"]["mock_mode"],
+        "gps_coordinate": runtime_config.get("gps_metadata", {}).get("coordinate", "unknown")
     })
 
 @app.route('/static/<path:filename>')
@@ -432,14 +466,51 @@ def submit_query_alias():
             'metrics': {'response_count': 0, 'champion_score': 0, 'process_time': 0},
             'agents': {}
         }), 500
+
+# =============================================================================
+# HEALTH ENDPOINTS (Added for Railway deployment)
+# =============================================================================
+@app.route('/healthz')
+def health_check():
+    """Fast health check - always returns 200."""
+    return jsonify({"status": "healthy"}), 200
+
+@app.route('/readiness')
+def readiness_check():
+    """Readiness check - validates environment at request time."""
+    try:
+        runtime_config = load_runtime_config()
+        validator = get_api_validator()
+        
+        readiness_status = {
+            "status": "ready",
+            "bootstrap_enabled": os.getenv("BOOTSTRAP_ENABLED", "true").lower() == "true",
+            "mock_mode": runtime_config["runtime"]["mock_mode"],
+            "config_loaded": True,
+            "api_validator": validator is not None
+        }
+        
+        if validator:
+            available_agents = validator.get_available_agents()
+            readiness_status["available_agents"] = available_agents
+            readiness_status["agent_count"] = len(available_agents)
+        
+        return jsonify(readiness_status), 200
+        
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 503
                 
 # =============================================================================
 # MAIN EXECUTION
 # =============================================================================
 if __name__ == '__main__':
+    # Initialize runtime components
+    initialize_runtime()
+    
     print("🚀 Starting Socrates Expert Panel v4.0 server...")
     
-    if RUNTIME_CONFIG["runtime"]["mock_mode"]:
+    runtime_config = load_runtime_config()
+    if runtime_config["runtime"]["mock_mode"]:
         print("⚠️  MOCK MODE ENABLED - Responses will be simulated")
     else:
         print("🔥 REAL MODE ENABLED - Using actual LLM dispatcher")

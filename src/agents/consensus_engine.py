@@ -445,7 +445,84 @@ def detect_response_deviations(successful_responses: List[Dict]) -> List[Dict]:
         })
     
     return deviations
+# =============================================================================
+# COMPATIBILITY WRAPPERS FOR run_validated_agent.py
+# =============================================================================
 
+def get_multi_agent_consensus(prompt: str, providers: Optional[List[str]] = None) -> Dict[str, Any]:
+    """
+    Thin wrapper for generate_expert_panel_response_v3 to match expected import.
+    
+    Args:
+        prompt: The question/prompt to analyze
+        providers: Optional list of LLM providers (defaults to auto-selection)
+    
+    Returns:
+        dict: Consensus result with expected shape:
+        {
+            'success': bool,
+            'confidence_score': float, 
+            'metadata': {
+                'successful_agents': int,
+                'total_agents': int
+            }
+        }
+    
+    GPS Coordinate: fr_05_uc_11_ec_04_tc_003 (wrapper)
+    """
+    try:
+        # Call the actual consensus function
+        result = generate_expert_panel_response_v3(prompt, providers)
+        
+        # Normalize return shape to match expected format
+        if result.get('status') == 'success':
+            return {
+                'success': True,
+                'confidence_score': result.get('result', {}).get('metadata', {}).get('average_confidence', 0.85),
+                'metadata': {
+                    'successful_agents': len(result.get('result', {}).get('responses', [])),
+                    'total_agents': len(result.get('result', {}).get('responses', [])),
+                    'summary': result.get('result', {}).get('summary_text', 'Expert panel analysis complete'),
+                    'responses': result.get('result', {}).get('responses', [])
+                }
+            }
+        else:
+            return {
+                'success': False,
+                'confidence_score': 0.0,
+                'metadata': {
+                    'successful_agents': 0,
+                    'total_agents': 0,
+                    'error': result.get('error', 'Unknown error'),
+                    'responses': []
+                }
+            }
+            
+    except Exception as e:
+        logger.error(f"Consensus wrapper failed: {e}")
+        return {
+            'success': False,
+            'confidence_score': 0.0,
+            'metadata': {
+                'successful_agents': 0,
+                'total_agents': 0,
+                'error': str(e),
+                'responses': []
+            }
+        }
+
+# Legacy class alias for compatibility
+class ConsensusEngine:
+    """
+    Legacy compatibility class alias.
+    
+    GPS Coordinate: fr_05_uc_11_ec_04_tc_003 (compatibility)
+    """
+    
+    @staticmethod
+    def run_consensus(prompt: str, providers: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Static method wrapper for consensus functionality."""
+        return get_multi_agent_consensus(prompt, providers)
 # Test function for development/debugging
 if __name__ == "__main__":
     print("🧪 Testing Expert Panel Consensus Engine v3.0...")

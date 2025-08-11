@@ -5,6 +5,7 @@ include:
   - Procfile
   - runtime.txt
   - README.md
+  - directory_map.yaml
   - deploy_to_railway.sh
   
   # Config (runtime-only)
@@ -19,6 +20,7 @@ include:
   - src/core/__init__.py
   - src/core/system_config.py
   - src/core/confidence_scorer.py
+  - src/utils/logging_utils.py
   - src/utils/__init__.py
   - src/utils/secrets_manager.py
   - src/utils/llm_credentials_manager.py
