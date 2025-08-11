@@ -44,6 +44,50 @@ from consensus_engine import generate_expert_panel_response_v3
 app = Flask(__name__, static_folder='static', template_folder='static')
 
 # =============================================================================
+# PATCH 01A: PROVIDER NORMALIZATION HELPERS
+# =============================================================================
+_ENV_MAP = {
+    "openai":  ["OPENAI_API_KEY"],
+    "claude":  ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"],
+    "mistral": ["MISTRAL_API_KEY"],
+    "cohere":  ["COHERE_API_KEY"],
+    "gemini":  ["GEMINI_API_KEY", "GOOGLE_API_KEY"],  # alias
+    "together":["TOGETHER_API_KEY"],
+}
+_ALIAS = {
+    "gpt4": "openai", "gpt-4": "openai",
+    "anthropic": "claude", "claude-3": "claude",
+    "google": "gemini", "gemini-pro": "gemini", "vertex-gemini": "gemini",
+}
+
+def _available_providers_from_env():
+    return {p for p, names in _ENV_MAP.items() if any(os.getenv(n) for n in names)}
+
+def _normalize_providers_from_payload(data: dict):
+    # accept both keys
+    providers = data.get("providers")
+    if not providers and "agents" in data:
+        providers = data["agents"]
+
+    # normalize shape
+    if not providers:
+        providers = []
+    elif isinstance(providers, str):
+        providers = [providers]
+
+    providers = [str(p).strip().lower() for p in providers]
+    providers = [_ALIAS.get(p, p) for p in providers]
+
+    available = _available_providers_from_env()
+    requested = set(providers)
+    chosen = (requested & available) if requested else set(available)
+
+    if not chosen and "openai" in available:
+        chosen = {"openai"}
+
+    return chosen, available
+
+# =============================================================================
 # GPS FOUNDATION RUNTIME CONFIG LOADER
 # =============================================================================
 RUNTIME_CONFIG = None
@@ -310,7 +354,7 @@ def static_files(filename):
 @app.route('/submit_query', methods=['POST'])
 def submit_query_alias():
     """
-    Enhanced compatibility shim for Socrates v4.1 frontend
+    Enhanced compatibility shim for Socrates v4.1 frontend with provider normalization
     Routes /submit_query -> /api/consensus with format transformation
     GPS Coordinate: fr_05_uc_11_ec_06_tc_004_shim
     """
@@ -319,139 +363,51 @@ def submit_query_alias():
     start_time = time.time()
     
     try:
-        # Get the original consensus result
-        consensus_result = expert_panel_analysis()
+        data = request.get_json()
         
-        # Check if it's already a response object
-        if hasattr(consensus_result, 'get_json'):
-            original_data = consensus_result.get_json()
-        else:
-            original_data = consensus_result
-        
-        print(f"🔄 Transforming consensus result: {type(original_data)}")
-        
-        # Transform to Socrates v4.1 format
-        if isinstance(original_data, dict) and original_data.get('status') == 'success':
-            
-            # Initialize responses and agent scores
-            responses = []
-            agent_scores = {}
-            
-            # Extract agent responses from consensus engine result
-            # The consensus engine returns responses in result.responses format
-            if 'result' in original_data and 'responses' in original_data['result']:
-                raw_responses = original_data['result']['responses']
-                print(f"🔍 Found {len(raw_responses)} raw responses from consensus engine")
-                
-                for response_data in raw_responses:
-                    agent_name = response_data.get('agent', 'unknown')
-                    print(f"🔍 Processing {agent_name}: success={response_data.get('success')}")
-                    
-                    # Initialize default score
-                    score = 50
-                    
-                    # Only include successful responses with content
-                    if response_data.get('success') and response_data.get('response'):
-                        content = response_data.get('response', '').strip()
-                        
-                        if content:
-                            word_count = len(content.split())
-                            
-                            # Calculate score from confidence
-                            confidence = response_data.get('confidence', 0.5)
-                            if confidence <= 1.0:
-                                score = int(confidence * 100)
-                            else:
-                                score = int(confidence)
-                            
-                            # Ensure score is in valid range
-                            score = max(0, min(100, score))
-                            
-                            responses.append({
-                                'agent': agent_name.replace('_', ' ').title(),
-                                'content': content,
-                                'word_count': word_count,
-                                'score': score,
-                                'response_time': response_data.get('response_time', 2.0)
-                            })
-                            
-                            agent_scores[agent_name] = {
-                                'score': score,
-                                'champion': False
-                            }
-                            
-                            print(f"✅ INCLUDED {agent_name}: {len(content)} chars, score={score}")
-                        else:
-                            print(f"❌ EXCLUDED {agent_name}: empty content")
-                    else:
-                        print(f"❌ EXCLUDED {agent_name}: success={response_data.get('success')}, has_response={bool(response_data.get('response'))}")
-            
-            print(f"🔍 FINAL RESPONSES COUNT: {len(responses)}")
-            
-            # Handle case with no valid responses
-            if len(responses) == 0:
-                return jsonify({
-                    'success': False,
-                    'error': 'No valid agent responses received',
-                    'responses': [],
-                    'synthesis': 'All agents failed to provide valid responses.',
-                    'champion': None,
-                    'metrics': {'response_count': 0, 'champion_score': 0, 'process_time': 0},
-                    'agents': {}
-                })
-            
-            # Find champion from available responses
-            champion_response = max(responses, key=lambda x: x['score'])
-            champion = champion_response['agent']
-            
-            # Update champion status in agent scores
-            for agent_name in agent_scores:
-                agent_scores[agent_name]['champion'] = (
-                    agent_name.replace('_', ' ').title() == champion
-                )
-            
-            # 🎯 CALCULATE ACTUAL PROCESSING TIME
-            processing_time = time.time() - start_time
-            
-            # Build Socrates v4.1 response
-            socratic_response = {
-                'success': True,
-                'responses': responses,
-                'synthesis': original_data.get('result', {}).get('summary_text', 
-                           f"Expert panel analysis complete with {len(responses)} response(s)."),
-                'champion': champion,
-                'metrics': {
-                    'response_count': len(responses),
-                    'total_words': sum(r['word_count'] for r in responses),
-                    'total_tokens': original_data.get('result', {}).get('metadata', {}).get('total_tokens', 0),
-                    'champion_score': champion_response['score'],
-                    'process_time': round(processing_time, 1)
-                },
-                'agents': agent_scores
-            }
-            
-            print(f"✅ Transformed to Socrates format: {len(responses)} responses")
-            
-            # 🧾 CRITICAL DEBUG - PRINT FULL FINAL RESULT
-            print(f"\n🧾 TRANSFORMED FINAL RESULT:")
-            import json
-            print(json.dumps(socratic_response, indent=2))
-            print(f"🧾 END FINAL RESULT\n")
-            
-            return jsonify(socratic_response)
-        
-        else:
-            # Handle error case
+        # PATCH 01B: Normalize providers/agents and enforce sane fallback
+        chosen, available = _normalize_providers_from_payload(data)
+        if not chosen:
             return jsonify({
-                'success': False,
-                'error': original_data.get('error', 'Unknown error from consensus engine'),
-                'responses': [],
-                'synthesis': 'Analysis failed.',
-                'champion': None,
-                'metrics': {'response_count': 0, 'champion_score': 0, 'process_time': 0},
-                'agents': {}
-            })
-            
+                "success": False,
+                "error": "no_available_providers",
+                "available": sorted(list(available)),
+                "responses": [],
+                "agents": {}
+            }), 400
+
+        # Make sure downstream logic sees canonical key
+        data["providers"] = sorted(list(chosen))
+        
+        # Update the selected_agents to use normalized providers
+        selected_agents = data["providers"]
+        
+        question = data.get('prompt', '')
+        
+        print(f"🏛️ Received query: {question}")
+        print(f"🤖 Normalized providers: {selected_agents}")
+        print(f"🔍 Available providers: {sorted(list(available))}")
+        
+        # ✅ STRICT MOCK MODE CHECK
+        runtime_config = load_runtime_config()
+        if runtime_config["runtime"]["mock_mode"]:
+            print("⚠️ MOCK MODE ACTIVE - Returning simulated responses")
+            mock_result = create_mock_response(question, selected_agents)
+            # Transform mock result to Socrates format
+            return _transform_to_socrates_format(mock_result, start_time)
+        
+        # ✅ REAL MODE - Use actual consensus engine
+        print("🔥 REAL MODE - Calling actual LLM dispatcher")
+        
+        # Call the REAL consensus engine
+        result = generate_expert_panel_response_v3(question, selected_agents)
+        
+        print(f"🔍 CONSENSUS ENGINE RESULT: {type(result)}")
+        print(f"🔍 STATUS: {result.get('status') if isinstance(result, dict) else 'Unknown'}")
+        
+        # Transform to Socrates format
+        return _transform_to_socrates_format(result, start_time)
+        
     except Exception as e:
         print(f"❌ Error in submit_query_alias: {str(e)}")
         import traceback
@@ -466,6 +422,133 @@ def submit_query_alias():
             'metrics': {'response_count': 0, 'champion_score': 0, 'process_time': 0},
             'agents': {}
         }), 500
+
+def _transform_to_socrates_format(original_data, start_time):
+    """Transform consensus engine result to Socrates v4.1 format"""
+    import time
+    
+    # Transform to Socrates v4.1 format
+    if isinstance(original_data, dict) and original_data.get('status') == 'success':
+        
+        # Initialize responses and agent scores
+        responses = []
+        agent_scores = {}
+        
+        # Extract agent responses from consensus engine result
+        if 'result' in original_data and 'responses' in original_data['result']:
+            raw_responses = original_data['result']['responses']
+            print(f"🔍 Found {len(raw_responses)} raw responses from consensus engine")
+            
+            for response_data in raw_responses:
+                agent_name = response_data.get('agent', 'unknown')
+                print(f"🔍 Processing {agent_name}: success={response_data.get('success')}")
+                
+                # Initialize default score
+                score = 50
+                
+                # Only include successful responses with content
+                if response_data.get('success') and response_data.get('response'):
+                    content = response_data.get('response', '').strip()
+                    
+                    if content:
+                        word_count = len(content.split())
+                        
+                        # Calculate score from confidence
+                        confidence = response_data.get('confidence', 0.5)
+                        if confidence <= 1.0:
+                            score = int(confidence * 100)
+                        else:
+                            score = int(confidence)
+                        
+                        # Ensure score is in valid range
+                        score = max(0, min(100, score))
+                        
+                        responses.append({
+                            'agent': agent_name.replace('_', ' ').title(),
+                            'content': content,
+                            'word_count': word_count,
+                            'score': score,
+                            'response_time': response_data.get('response_time', 2.0)
+                        })
+                        
+                        agent_scores[agent_name] = {
+                            'score': score,
+                            'champion': False
+                        }
+                        
+                        print(f"✅ INCLUDED {agent_name}: {len(content)} chars, score={score}")
+                    else:
+                        print(f"❌ EXCLUDED {agent_name}: empty content")
+                else:
+                    print(f"❌ EXCLUDED {agent_name}: success={response_data.get('success')}, has_response={bool(response_data.get('response'))}")
+        
+        print(f"🔍 FINAL RESPONSES COUNT: {len(responses)}")
+        
+        # Handle case with no valid responses
+        if len(responses) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'No valid agent responses received',
+                'responses': [],
+                'synthesis': 'All agents failed to provide valid responses.',
+                'champion': None,
+                'metrics': {'response_count': 0, 'champion_score': 0, 'process_time': 0},
+                'agents': {}
+            })
+        
+        # Find champion from available responses
+        champion_response = max(responses, key=lambda x: x['score'])
+        champion = champion_response['agent']
+        
+        # Update champion status in agent scores
+        for agent_name in agent_scores:
+            agent_scores[agent_name]['champion'] = (
+                agent_name.replace('_', ' ').title() == champion
+            )
+        
+        # 🎯 CALCULATE ACTUAL PROCESSING TIME
+        processing_time = time.time() - start_time
+        
+        # Build Socrates v4.1 response
+        socratic_response = {
+            'success': True,
+            'responses': responses,
+            'synthesis': original_data.get('result', {}).get('summary_text', 
+                       f"Expert panel analysis complete with {len(responses)} response(s)."),
+            'champion': champion,
+            'metrics': {
+                'response_count': len(responses),
+                'total_words': sum(r['word_count'] for r in responses),
+                'total_tokens': original_data.get('result', {}).get('metadata', {}).get('total_tokens', 0),
+                'champion_score': champion_response['score'],
+                'process_time': round(processing_time, 1)
+            },
+            'agents': agent_scores
+        }
+        
+        print(f"✅ Transformed to Socrates format: {len(responses)} responses")
+        
+        return jsonify(socratic_response)
+    
+    else:
+        # Handle error case
+        return jsonify({
+            'success': False,
+            'error': original_data.get('error', 'Unknown error from consensus engine'),
+            'responses': [],
+            'synthesis': 'Analysis failed.',
+            'champion': None,
+            'metrics': {'response_count': 0, 'champion_score': 0, 'process_time': 0},
+            'agents': {}
+        })
+
+# =============================================================================
+# PATCH 02: ROUTE ALIAS FOR /api/ask
+# =============================================================================
+@app.route('/api/ask', methods=['POST'])
+def api_ask_alias():
+    """Forward to the same logic used by /submit_query"""
+    return submit_query_alias()
 
 # =============================================================================
 # HEALTH ENDPOINTS (Added for Railway deployment)

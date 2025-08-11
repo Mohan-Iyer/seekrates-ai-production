@@ -81,3 +81,4 @@ huggingface-hub>=0.17.0
 sentencepiece>=0.1.99
 sentence-transformers>=2.2.0
 faiss-cpu>=1.7.4
+requests>=2.31.0

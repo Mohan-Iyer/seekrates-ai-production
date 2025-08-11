@@ -12,23 +12,22 @@
 # status: "Production - RESPONSE FORMAT COMPLIANT"
 # =============================================================================
 
-#!/usr/bin/env python3
-# =============================================================================
-# SCRIPT DNA METADATA - GPS FOUNDATION COMPLIANT
-# =============================================================================
-# ... existing DNA metadata ...
-
+import requests
 import json
 import logging
-import subprocess
 import sys
 import traceback
-import os  # ← CRITICAL: Must be at global scope
+import os
 import yaml
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
+
+def _post_json(url: str, headers: dict, payload: dict, timeout: int = 35):
+    resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+    resp.raise_for_status()
+    return resp
 
 # Load environment variables immediately
 load_dotenv()
@@ -42,7 +41,7 @@ try:
     
     # Resolve canonical paths using correct keys
     project_root = Path(directory_map["project_root"])
-    src_root = Path(directory_map["src"])  # or directory_map["source_root"]
+    src_root = Path(directory_map["src"])
     utils_dir = Path(directory_map["utilities"]["utils_root"])
     agents_dir = Path(directory_map["agents"]["agents_root"])
     
@@ -52,7 +51,7 @@ try:
     
     logging.info(f"✅ Canonical paths loaded from directory_map.yaml")
         
-except (FileNotFoundError, KeyError, yaml.YAMLError) as e:  # ← EXPANDED ERROR HANDLING
+except (FileNotFoundError, KeyError, yaml.YAMLError) as e:
     # Fallback for development
     logging.warning(f"directory_map.yaml issue ({e}) - using fallback paths")
     project_root = Path(".")
@@ -60,16 +59,9 @@ except (FileNotFoundError, KeyError, yaml.YAMLError) as e:  # ← EXPANDED ERROR
     utils_dir = Path("src/utils") 
     agents_dir = Path("src/agents")
     
-    # Add fallback path to sys.path  ← MISSING IN YOUR VERSION
+    # Add fallback path to sys.path
     if str(src_root) not in sys.path:
-        sys.path.insert(0, str(src_root))        
-except FileNotFoundError:
-    # Fallback for development
-    logging.warning("directory_map.yaml not found - using fallback paths")
-    project_root = Path(".")
-    src_root = Path("src")
-    utils_dir = Path("src/utils") 
-    agents_dir = Path("src/agents")
+        sys.path.insert(0, str(src_root))
 
 # Now import using resolved paths
 try:
@@ -109,7 +101,6 @@ class LLMDispatcher:
             "jurassic": self._handle_ai21,
             "cohere": self._handle_cohere,
             "command": self._handle_cohere
-            
         }
         logger.info("LLM Dispatcher initialized with supported agents: %s", list(self.supported_agents.keys()))
     
@@ -266,33 +257,18 @@ class LLMDispatcher:
                     error="missing_api_key"
                 )
             
-            # Use curl to call Claude API
-            curl_command = [
-                "curl", "-X", "POST",
-                "https://api.anthropic.com/v1/messages",
-                "-H", "Content-Type: application/json",
-                "-H", f"x-api-key: {api_key}",
-                "-H", "anthropic-version: 2023-06-01",
-                "-d", json.dumps({
-                    "model": kwargs.get("model", "claude-3-5-sonnet-20241022"),
-                    "max_tokens": kwargs.get("max_tokens", 1000),
-                    "messages": [{"role": "user", "content": prompt}]
-                }),
-                "--max-time", "30"
-            ]
-            
-            result = subprocess.run(curl_command, capture_output=True, text=True, timeout=35)
-            
-            if result.returncode != 0:
-                return self._build_standardized_response(
-                    answer=f"Claude API error: {result.stderr}",
-                    agent_name="claude",
-                    success=False,
-                    confidence=0.0,
-                    error="api_error"
-                )
-            
-            response_data = json.loads(result.stdout)
+            headers = {
+                "x-api-key": api_key,
+                "Content-Type": "application/json",
+                "anthropic-version": "2023-06-01"
+            }
+            payload = {
+                "model": kwargs.get("model", "claude-3-5-sonnet-20241022"),
+                "max_tokens": kwargs.get("max_tokens", 1000),
+                "messages": [{"role": "user", "content": prompt}]
+            }
+            resp = _post_json("https://api.anthropic.com/v1/messages", headers, payload, timeout=35)
+            response_data = resp.json()
             
             if "error" in response_data:
                 return self._build_standardized_response(
@@ -317,9 +293,7 @@ class LLMDispatcher:
             )
             
         except Exception as e:
-            # ═══════════════════════════════════════════════════════════════
-            # 🚨 ENHANCED CLAUDE API DEBUGGING - COMPREHENSIVE ERROR ANALYSIS
-            # ═══════════════════════════════════════════════════════════════
+            # Enhanced Claude API debugging - comprehensive error analysis
             print(f"\n❌ CLAUDE API ERROR - COMPREHENSIVE DEBUG ANALYSIS")
             print(f"=" * 70)
             print(f"🔍 Error Type: {type(e).__name__}")
@@ -348,14 +322,8 @@ class LLMDispatcher:
             print(f"📝 Prompt Length: {len(prompt)} chars")
             print(f"📝 Prompt Preview: {prompt[:100]}...")
             
-            # Curl Command Analysis (if curl-related error)
-            if "curl" in str(e).lower() or "subprocess" in str(e).lower():
-                print(f"🔨 CURL/SUBPROCESS ERROR DETECTED")
-                print(f"🔨 This suggests a system-level issue with curl command")
-                
             # Full traceback
             print(f"📚 FULL TRACEBACK:")
-            import traceback
             traceback.print_exc()
             print(f"=" * 70)
             
@@ -371,7 +339,6 @@ class LLMDispatcher:
                 confidence=0.0,
                 error="processing_error"
             )
-            
     
     def _handle_openai(self, prompt: str, **kwargs) -> Dict[str, Any]:
         """Handle OpenAI API requests"""
@@ -386,33 +353,18 @@ class LLMDispatcher:
                     error="missing_api_key"
                 )
             
-            # Use curl to call OpenAI API
-            curl_command = [
-                "curl", "-X", "POST",
-                "https://api.openai.com/v1/chat/completions",
-                "-H", "Content-Type: application/json",
-                "-H", f"Authorization: Bearer {api_key}",
-                "-d", json.dumps({
-                    "model": kwargs.get("model", "gpt-4o-mini"),
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": kwargs.get("max_tokens", 1000),
-                    "temperature": kwargs.get("temperature", 0.7)
-                }),
-                "--max-time", "30"
-            ]
-            
-            result = subprocess.run(curl_command, capture_output=True, text=True, timeout=35)
-            
-            if result.returncode != 0:
-                return self._build_standardized_response(
-                    answer=f"OpenAI API error: {result.stderr}",
-                    agent_name="openai",
-                    success=False,
-                    confidence=0.0,
-                    error="api_error"
-                )
-            
-            response_data = json.loads(result.stdout)
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": kwargs.get("model", "gpt-4o-mini"),
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": kwargs.get("max_tokens", 1000),
+                "temperature": kwargs.get("temperature", 0.7)
+            }
+            resp = _post_json("https://api.openai.com/v1/chat/completions", headers, payload, timeout=35)
+            response_data = resp.json()
             
             if "error" in response_data:
                 return self._build_standardized_response(
@@ -448,7 +400,7 @@ class LLMDispatcher:
             )
     
     def _handle_mistral(self, prompt: str, **kwargs) -> Dict[str, Any]:
-        """Handle Mistral AI API requests with enhanced debugging and retry logic"""
+        """Handle Mistral AI API requests with enhanced debugging"""
         try:
             api_key = self._get_api_key("mistral")
             if not api_key:
@@ -470,58 +422,18 @@ class LLMDispatcher:
             print(f"🔍 MISTRAL DEBUG: Starting API call with {len(prompt)} char prompt")
             print(f"🔍 MISTRAL DEBUG: API key length: {len(api_key)} chars")
             
-            # Enhanced curl command with longer timeout
-            curl_command = [
-                "curl", "-X", "POST",
-                "https://api.mistral.ai/v1/chat/completions",
-                "-H", "Content-Type: application/json",
-                "-H", f"Authorization: Bearer {api_key}",
-                "-d", json.dumps({
-                    "model": kwargs.get("model", "mistral-small-latest"),
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": kwargs.get("max_tokens", 1000),
-                    "temperature": kwargs.get("temperature", 0.7)
-                }),
-                "--max-time", "45"  # ← INCREASED TIMEOUT
-            ]
-            
-            # Retry logic
-            for attempt in range(2):
-                print(f"🔍 MISTRAL DEBUG: Attempt {attempt + 1}/2")
-                
-                result = subprocess.run(curl_command, capture_output=True, text=True, timeout=50)
-                
-                print(f"🔍 MISTRAL DEBUG: Return code: {result.returncode}")
-                print(f"🔍 MISTRAL DEBUG: Response length: {len(result.stdout)} chars")
-                
-                if result.stderr:
-                    print(f"🔍 MISTRAL DEBUG: Stderr: {result.stderr}")
-                
-                if result.returncode == 0:
-                    break
-                elif attempt == 0:
-                    print(f"⚠️ MISTRAL DEBUG: Attempt 1 failed, retrying after 2s delay...")
-                    import time
-                    time.sleep(2)
-                else:
-                    error_log = {
-                        "agent": "mistral",
-                        "status": "error",
-                        "error": f"Connection failed after 2 attempts: {result.stderr}",
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    }
-                    print(f"❌ MISTRAL DEBUG: {json.dumps(error_log)}")
-                    return self._build_standardized_response(
-                        answer=f"Mistral API connection error: {result.stderr}",
-                        agent_name="mistral",
-                        success=False,
-                        confidence=0.0,
-                        error="connection_error"
-                    )
-            
-            print(f"🔍 MISTRAL DEBUG: Raw response preview: {result.stdout[:200]}...")
-            
-            response_data = json.loads(result.stdout)
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": kwargs.get("model", "mistral-small-latest"),
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": kwargs.get("max_tokens", 1000),
+                "temperature": kwargs.get("temperature", 0.7)
+            }
+            resp = _post_json("https://api.mistral.ai/v1/chat/completions", headers, payload, timeout=45)
+            response_data = resp.json()
             
             if "error" in response_data:
                 error_log = {
@@ -584,7 +496,6 @@ class LLMDispatcher:
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             print(f"❌ MISTRAL DEBUG: {json.dumps(error_log)}")
-            import traceback
             traceback.print_exc()
             
             return self._build_standardized_response(
@@ -596,7 +507,7 @@ class LLMDispatcher:
             )
 
     def _handle_gemini(self, prompt: str, **kwargs) -> Dict[str, Any]:
-        """Handle Google Gemini API requests with enhanced debugging and retry logic"""
+        """Handle Google Gemini API requests with enhanced debugging"""
         try:
             api_key = self._get_api_key("gemini")
             if not api_key:
@@ -619,60 +530,17 @@ class LLMDispatcher:
             print(f"🔍 GEMINI DEBUG: API key length: {len(api_key)} chars")
             
             model = kwargs.get("model", "gemini-1.5-flash")
-            
-            curl_command = [
-                "curl", "-X", "POST",
-                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
-                "-H", "Content-Type: application/json",
-                "-d", json.dumps({
-                    "contents": [{
-                        "parts": [{"text": prompt}]
-                    }],
-                    "generationConfig": {
-                        "maxOutputTokens": kwargs.get("max_tokens", 1000),
-                        "temperature": kwargs.get("temperature", 0.7)
-                    }
-                }),
-                "--max-time", "45"  # ← INCREASED TIMEOUT
-            ]
-            
-            # Retry logic with delay
-            for attempt in range(2):
-                print(f"🔍 GEMINI DEBUG: Attempt {attempt + 1}/2")
-                
-                result = subprocess.run(curl_command, capture_output=True, text=True, timeout=50)
-                
-                print(f"🔍 GEMINI DEBUG: Return code: {result.returncode}")
-                print(f"🔍 GEMINI DEBUG: Response length: {len(result.stdout)} chars")
-                
-                if result.stderr:
-                    print(f"🔍 GEMINI DEBUG: Stderr: {result.stderr}")
-                
-                if result.returncode == 0:
-                    break
-                elif attempt == 0:
-                    print(f"⚠️ GEMINI DEBUG: Attempt 1 failed, retrying after 3s delay...")
-                    import time
-                    time.sleep(3)  # Longer delay for Gemini
-                else:
-                    error_log = {
-                        "agent": "gemini",
-                        "status": "error",
-                        "error": f"Connection failed after 2 attempts: {result.stderr}",
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    }
-                    print(f"❌ GEMINI DEBUG: {json.dumps(error_log)}")
-                    return self._build_standardized_response(
-                        answer=f"Gemini API connection error: {result.stderr}",
-                        agent_name="gemini",
-                        success=False,
-                        confidence=0.0,
-                        error="connection_error"
-                    )
-            
-            print(f"🔍 GEMINI DEBUG: Raw response preview: {result.stdout[:200]}...")
-            
-            response_data = json.loads(result.stdout)
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            headers = {"Content-Type": "application/json"}
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "maxOutputTokens": kwargs.get("max_tokens", 1000),
+                    "temperature": kwargs.get("temperature", 0.7)
+                }
+            }
+            resp = _post_json(url, headers, payload, timeout=45)
+            response_data = resp.json()
             
             if "error" in response_data:
                 error_log = {
@@ -752,7 +620,6 @@ class LLMDispatcher:
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             print(f"❌ GEMINI DEBUG: {json.dumps(error_log)}")
-            import traceback
             traceback.print_exc()
             
             return self._build_standardized_response(
@@ -764,7 +631,7 @@ class LLMDispatcher:
             )
 
     def _handle_cohere(self, prompt: str, **kwargs) -> Dict[str, Any]:
-        """Handle Cohere API requests with enhanced debugging and retry logic"""
+        """Handle Cohere API requests with enhanced debugging"""
         try:
             api_key = self._get_api_key("cohere")
             if not api_key:
@@ -785,53 +652,18 @@ class LLMDispatcher:
             
             print(f"🔍 COHERE DEBUG: Starting API call with {len(prompt)} char prompt")
             
-            model = kwargs.get("model", "command-r-plus")
-            
-            curl_command = [
-                "curl", "-X", "POST",
-                "https://api.cohere.ai/v1/chat",
-                "-H", "Content-Type: application/json",
-                "-H", f"Authorization: Bearer {api_key}",
-                "-d", json.dumps({
-                    "model": model,
-                    "message": prompt,
-                    "max_tokens": kwargs.get("max_tokens", 1000),
-                    "temperature": kwargs.get("temperature", 0.7)
-                }),
-                "--max-time", "45"  # ← INCREASED TIMEOUT
-            ]
-            
-            # Retry logic
-            for attempt in range(2):
-                print(f"🔍 COHERE DEBUG: Attempt {attempt + 1}/2")
-                
-                result = subprocess.run(curl_command, capture_output=True, text=True, timeout=50)
-                
-                print(f"🔍 COHERE DEBUG: Return code: {result.returncode}")
-                
-                if result.returncode == 0:
-                    break
-                elif attempt == 0:
-                    print(f"⚠️ COHERE DEBUG: Attempt 1 failed, retrying after 2s delay...")
-                    import time
-                    time.sleep(2)
-                else:
-                    error_log = {
-                        "agent": "cohere",
-                        "status": "error",
-                        "error": f"Connection failed after 2 attempts: {result.stderr}",
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    }
-                    print(f"❌ COHERE DEBUG: {json.dumps(error_log)}")
-                    return self._build_standardized_response(
-                        answer=f"Cohere API connection error: {result.stderr}",
-                        agent_name="cohere",
-                        success=False,
-                        confidence=0.0,
-                        error="connection_error"
-                    )
-            
-            response_data = json.loads(result.stdout)
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": kwargs.get("model", "command-r-plus"),
+                "message": prompt,
+                "max_tokens": kwargs.get("max_tokens", 1000),
+                "temperature": kwargs.get("temperature", 0.7)
+            }
+            resp = _post_json("https://api.cohere.ai/v1/chat", headers, payload, timeout=45)
+            response_data = resp.json()
             
             if "message" in response_data and "error" in response_data.get("message", "").lower():
                 error_log = {
@@ -863,7 +695,7 @@ class LLMDispatcher:
             return self._build_standardized_response(
                 answer=response_text,
                 agent_name="cohere",
-                model=model,
+                model=kwargs.get("model", "command-r-plus"),
                 usage=response_data.get("meta", {}).get("tokens", {}),
                 finish_reason=finish_reason,
                 confidence=0.9,
@@ -893,7 +725,6 @@ class LLMDispatcher:
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             print(f"❌ COHERE DEBUG: {json.dumps(error_log)}")
-            import traceback
             traceback.print_exc()
             
             return self._build_standardized_response(
@@ -909,34 +740,17 @@ class LLMDispatcher:
         try:
             model = kwargs.get("model", "llama3.2")
             
-            # Use curl to call local Ollama API
-            curl_command = [
-                "curl", "-X", "POST",
-                "http://localhost:11434/api/generate",
-                "-H", "Content-Type: application/json", 
-                "-d", json.dumps({
-                    "model": model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": kwargs.get("temperature", 0.7)
-                    }
-                }),
-                "--max-time", "60"
-            ]
-            
-            result = subprocess.run(curl_command, capture_output=True, text=True, timeout=65)
-            
-            if result.returncode != 0:
-                return self._build_standardized_response(
-                    answer="Ollama connection failed - is Ollama server running on localhost:11434?",
-                    agent_name="ollama",
-                    success=False,
-                    confidence=0.0,
-                    error=f"ollama_connection_error: {result.stderr}"
-                )
-            
-            response_data = json.loads(result.stdout)
+            headers = {"Content-Type": "application/json"}
+            payload = {
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": kwargs.get("temperature", 0.7)
+                }
+            }
+            resp = _post_json("http://localhost:11434/api/generate", headers, payload, timeout=65)
+            response_data = resp.json()
             
             if "error" in response_data:
                 return self._build_standardized_response(
@@ -973,6 +787,14 @@ class LLMDispatcher:
                 success=True
             )
             
+        except requests.exceptions.ConnectionError:
+            return self._build_standardized_response(
+                answer="Ollama connection failed - is Ollama server running on localhost:11434?",
+                agent_name="ollama",
+                success=False,
+                confidence=0.0,
+                error="ollama_connection_error"
+            )
         except json.JSONDecodeError as e:
             return self._build_standardized_response(
                 answer="Ollama returned invalid JSON response",
@@ -992,7 +814,7 @@ class LLMDispatcher:
             )
 
     def _handle_ai21(self, prompt: str, **kwargs) -> Dict[str, Any]:
-        """Handle AI21 API requests with correct endpoint"""
+        """Handle AI21 API requests"""
         try:
             api_key = self._get_api_key("ai21")
             if not api_key:
@@ -1006,32 +828,19 @@ class LLMDispatcher:
             
             model = kwargs.get("model", "jamba-1.5-mini")
             
-            # ✅ CORRECT AI21 ENDPOINT
-            curl_command = [
-                "curl", "-X", "POST",
-                f"https://api.ai21.com/studio/v1/{model}/complete",  # ← FIXED URL
-                "-H", "Content-Type: application/json",
-                "-H", f"Authorization: Bearer {api_key}",
-                "-d", json.dumps({
-                    "prompt": prompt,
-                    "maxTokens": kwargs.get("max_tokens", 1000),
-                    "temperature": kwargs.get("temperature", 0.7)
-                }),
-                "--max-time", "30"
-            ]
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+            payload = {
+                "prompt": prompt,
+                "maxTokens": kwargs.get("max_tokens", 1000),
+                "temperature": kwargs.get("temperature", 0.7)
+            }
             
-            result = subprocess.run(curl_command, capture_output=True, text=True, timeout=35)
-            
-            if result.returncode != 0:
-                return self._build_standardized_response(
-                    answer=f"AI21 API connection failed: {result.stderr}",
-                    agent_name="ai21",
-                    success=False,
-                    confidence=0.0,
-                    error="connection_error"
-                )
-            
-            response_data = json.loads(result.stdout)
+            url = f"https://api.ai21.com/studio/v1/{model}/complete"
+            resp = _post_json(url, headers, payload, timeout=35)
+            response_data = resp.json()
             
             # AI21 completion format
             if "completions" in response_data and response_data["completions"]:
@@ -1080,7 +889,7 @@ def call_llm_agent(agent_name: str, prompt: str, timeout: Optional[int] = 60, **
     Returns:
         Standardized response dictionary
     """
-    return dispatcher.dispatch(agent_name, prompt, **kwargs)  # ✅ Pass through kwargs
+    return dispatcher.dispatch(agent_name, prompt, **kwargs)
 
 def dispatch_prompt(agent: str, prompt: str, **kwargs) -> Dict[str, Any]:
     """
